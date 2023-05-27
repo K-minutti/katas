@@ -8,4 +8,3 @@ http://codekata.com/
 
 https://github.com/gamontal/awesome-katas
 
-
