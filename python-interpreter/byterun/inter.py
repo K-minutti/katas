@@ -63,8 +63,7 @@ class VirtualMachine:
         else:
             self.frame = None
 
-    ###
-    # Data stack manipulation methods
+    ## Data stack manipulation methods
     def top(self):
         return self.frame.stack[-1]
     
@@ -155,7 +154,7 @@ class VirtualMachine:
             raise e
         return self.return_value
     
-    # Block stack manipulation
+    ## Block stack manipulation
     def push_block(self, b_type, handler=None):
         stack_height = len(self.frame.stack)
         self.frame.block_stack.append(Block(b_type, handler, stack_height))
@@ -178,9 +177,66 @@ class VirtualMachine:
             self.last_exception = exctype, value, traceback
 
     def manage_block_stack(self, why):
-        pass
+        frame = self.frame
+        block = frame.block_stack[-1]
+        if block.type == 'loop' and why == 'continue':
+            self.jump(self.return_value)
+            why = None
+            return why
 
+        self.pop_block()
+        self.unwind_block(block)
 
+        if block.type == 'loop' and why == 'break':
+            why = None
+            self.jump(block.handler)
+            return why
+        
+        if (block.type in ['setup-except', 'finally'] and why == 'exception'):
+            self.push_block('except-handler')
+            exctype, value, tb = self.last_exception
+            self.push(tb, value, exctype)
+            self.push(tb, value, exctype) # yes, twice
+            why = None
+            self.jump(block.handler)
+            return why
+        
+        elif block.type == 'finally':
+            if why in ('return', 'continue'):
+                self.push(self.return_value)
+
+            self.push(why)
+            why = None
+            self.jump(block.handler)
+            return why
+        return why
+    
+    ## Stack manipulation
+    def byte_LOAD_CONST(self, const):
+        self.push(const)
+
+    def byte_POP_TOP(self):
+        self.pop()
+
+    ## Names
+    def byte_LOAD_NAME(self, name):
+        frame = self.frame
+        if name in frame.f_locals:
+            val = frame.f_locals[name]
+        elif name in frame.f_globals:
+            val = frame.f_globals[name]
+        elif name in frame.f_builtins:
+            val = frame.f_builtins[name]
+        else:
+            raise NameError(f"name {name} is not defined")
+        self.push(val)
+
+    def byte_STORE_NAME(self, name):
+        self.frame.f_locals[name] = self.pop()
+
+    def byte_LOAD_FAST(self, name):
+        pass 
+    
 
 class Frame:
     """Collection of attributes with no methods.
