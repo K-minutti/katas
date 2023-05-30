@@ -1,7 +1,8 @@
+import sys
 import dis
 import types
 import inspect
-
+import collections
 
 class VirtualMachineError(Exception):
     pass
@@ -62,7 +63,6 @@ class VirtualMachine:
         else:
             self.frame = None
 
-
     ###
     # Data stack manipulation methods
     def top(self):
@@ -110,10 +110,76 @@ class VirtualMachine:
         return byte_name, argument
 
     def dispatch(self, byte_name, argument):
-        pass
+        """Dispatch by bytename to the coreesponding methods.
+        Exceptions are caught and set on the virtual machine"""
+        # when latter unwinding the block stack
+        # we need to keep track of why we are doing it.
+        why = None
+        try: 
+            bytecode_fn = getattr(self, f"byte_{byte_name}", None)
+            if bytecode_fn is None:
+                if byte_name.startswith('UNARY_'):
+                    self.unaryOperator(byte_name[6:])
+                elif byte_name.startswith('BINARY_'):
+                    self.binaryOperator(byte_name[7:])
+                else:
+                    raise VirtualMachineError(
+                        f"unsupported bytecode type: {byte_name}"
+                    )
+            else:
+                why = bytecode_fn(*argument)
+        except:
+            # deal with exceptions encountered while executing the op.
+            self.last_exception = sys.exec_info()[:2] + (None,)
+            why = 'exception'
+        return why
 
     def run_frame(self, frame):
+        """Run a frame until it returns (somehow).
+        Exceptions are raised, the return value is returned"""
+        self.push_frame(frame)
+        while True:
+            byte_name, arguments = self.parse_byte_and_args()
+            why = self.dispatch(byte_name, arguments)
+            # Deal with any block management we need to do
+            while why and frame.block_stack:
+                why = self.manage_block_stack(why)
+            if why:
+                break
+        self.pop_frame()
+
+        if why == 'exception':
+            exc, val, tb = self.last_exception 
+            e = exc(val)
+            e.__tracebook__ = tb
+            raise e
+        return self.return_value
+    
+    # Block stack manipulation
+    def push_block(self, b_type, handler=None):
+        stack_height = len(self.frame.stack)
+        self.frame.block_stack.append(Block(b_type, handler, stack_height))
+
+    def pop_block(self):
+        return self.frame.block_stack.pop()
+    
+    def unwind_block(self, block):
+        """Unwind the values on the data stack corresponding to a given block"""
+        if block.type == 'except-handler':
+            # The exception itself is on the stack as type, value, and traceback
+            offset = 3
+        else:
+            offset = 0
+        while len(self.frame.stack) > block.level + offset:
+            self.pop()
+        
+        if block.type == 'except-handler':
+            traceback, value = exctype = self.popn(3)
+            self.last_exception = exctype, value, traceback
+
+    def manage_block_stack(self, why):
         pass
+
 
 
 class Frame:
@@ -121,7 +187,7 @@ class Frame:
     Attrs: the code object created by the compiler, the local, global and builtin namespaecs
     a ref to the previous frame, a data stack, a block stack, and the last instruction executed
     """
-    def __init__(self, code_obj, global_names, local_names, prev_frame);
+    def __init__(self, code_obj, global_names, local_names, prev_frame):
         self.code_obj = code_obj
         self.global_names = global_names
         self.local_names = local_names
@@ -184,6 +250,4 @@ def make_cell(value):
     return fn.__closure__[0]
 
 
-
-class Block:
-    pass
+Block = collections.namedtuple("Block", "type, handler, stack_height")
