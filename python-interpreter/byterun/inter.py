@@ -3,9 +3,12 @@ import dis
 import types
 import inspect
 import collections
+import operator
 
 class VirtualMachineError(Exception):
     pass
+
+Block = collections.namedtuple("Block", "type, handler, stack_height")
 
 class VirtualMachine:
     """Stores the call stack, the exception state, and return
@@ -173,7 +176,7 @@ class VirtualMachine:
             self.pop()
         
         if block.type == 'except-handler':
-            traceback, value = exctype = self.popn(3)
+            traceback, value, exctype = self.popn(3)
             self.last_exception = exctype, value, traceback
 
     def manage_block_stack(self, why):
@@ -235,8 +238,68 @@ class VirtualMachine:
         self.frame.f_locals[name] = self.pop()
 
     def byte_LOAD_FAST(self, name):
-        pass 
+        if name in self.frame.f_locals:
+            val = self.frame.f_locals[name]
+        else:
+            raise UnboundLocalError(
+                "local variable '%s' referenced before assignment" % name
+            )
+        self.push(val)
     
+    def byte_STORE_FAST(self, name):
+        self.frame.f_locals[name] = self.pop()
+
+    def byte_LOAD_GLOBAL(self, name):
+        f = self.frame
+        if name in f.f_globals:
+            val = f.f_globals[name]
+        elif name in f.f_builtins:
+            val = f.f_builtins[name]
+        else:
+            raise NameError("global name '%s' is not defined" % name)
+        self.push(val)
+
+   ## Operators
+    BINARY_OPERATORS = {
+        'POWER': pow, 
+        'MULTIPLY': operator.mul, 
+        'FLOOR_DIVIDE': operator.floordiv,
+        'TRUE_DIVIDE':  operator.truediv,
+        'MODULO':   operator.mod,
+        'ADD':      operator.add,
+        'SUBTRACT': operator.sub,
+        'SUBSCR':   operator.getitem,
+        'LSHIFT':   operator.lshift,
+        'RSHIFT':   operator.rshift,
+        'AND':      operator.and_,
+        'XOR':      operator.xor,
+        'OR':       operator.or_,
+    } 
+
+    def binary_operator(self, op):
+        x,y = self.popn(2)
+        self.push(self.BINARY_OPERATORS[op](x,y))
+
+    COMPARE_OPERATORS = [
+        operator.lt,
+        operator.le,
+        operator.eq,
+        operator.ne,
+        operator.gt,
+        operator.ge,
+        lambda x, y: x in y,
+        lambda x, y: x not in y,
+        lambda x, y: x is y,
+        lambda x, y: x is not y, 
+        lambda x, y: issubclass(x, Exception) and issubclass(x, y),
+    ]
+
+    def byte_COMPARE_OP(self, opnum):
+        x, y = self.popn(2)
+        self.push(self.COMPARE_OPERATORS[opnum](x,y))
+
+    ## Attributes and indexing
+
 
 class Frame:
     """Collection of attributes with no methods.
@@ -306,4 +369,3 @@ def make_cell(value):
     return fn.__closure__[0]
 
 
-Block = collections.namedtuple("Block", "type, handler, stack_height")
