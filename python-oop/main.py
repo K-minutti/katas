@@ -34,6 +34,9 @@ class SampleClass:
         print(f"Class attr: {self.class_attr}")
         print(f"Instance attr: {self.instance_attr}")
 
+class Record:
+    """Class to hold a record of data"""
+
 def run_example_class():
     ex = ExampleClass("Hello!")
     print(vars(ex))
@@ -58,5 +61,25 @@ def run_object_counter():
 def run_sample_class():
     print(SampleClass.class_attr)
     print(SampleClass(300).instance_attr)
+    print(SampleClass.__dict__)
+    print(SampleClass.__dict__["class_attr"])
+    sample = SampleClass("Hello, sample!")
+    print(sample.method())
+    sample.__dict__["instance_attr"] = "Hello - there"
+    print("Instance attr updated: ", sample.instance_attr)
 
-run_sample_class()
+def run_record_class():
+    d = {
+        "name": "hi",
+        "position": "Developer", 
+        "salary": 200000,
+        "is_manager": False,
+    }
+    rec = Record()
+    print("Record: ", rec.__dict__)
+    for field, val in d.items():
+        setattr(rec, field, val)
+    print("Record: ", rec.__dict__)
+    
+
+run_record_class()
