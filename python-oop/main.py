@@ -37,6 +37,10 @@ class SampleClass:
 class Record:
     """Class to hold a record of data"""
 
+class User:
+    """Used to add dynamic methods"""
+    pass
+
 def run_example_class():
     ex = ExampleClass("Hello!")
     print(vars(ex))
@@ -80,6 +84,20 @@ def run_record_class():
     for field, val in d.items():
         setattr(rec, field, val)
     print("Record: ", rec.__dict__)
+
+def __init__(self, name:str, color:str):
+    self.name = name
+    self.color = color
+
+def run_user_class():
+    a = User()
+    a.name = "val"
+    print(a.__dict__)
+
+    User.__init__ = __init__
+    print(User.__dict__)
+    b = User('san', 'red')
+    print(b.__dict__)
     
 
-run_record_class()
+run_user_class()
