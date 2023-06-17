@@ -13,6 +13,8 @@ if __name__ == "__main__":
     p = Point(4, 8)
     # p.__dict__ throws error no attr __dict__
     pc = PointCls(4,8)
+    t = (4,8)
     from pympler import asizeof
     print(asizeof.asizeof(Point(4,8)))
+    print(asizeof.asizeof(t))
     print(asizeof.asizeof(PointCls(4,8)))
