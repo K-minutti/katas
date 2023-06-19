@@ -13,6 +13,7 @@ Lets you write managed attributes
 Enables an object to work on with statements	
 .__enter__() and .__exit__()
 """
+from dataclasses import dataclass
 
 class ThreeDPoint:
     
@@ -32,6 +33,22 @@ class ThreeDPoint:
         return f"{type(self).__name__}({self.x}, {self.y}, {self.z})"
     
 
+@dataclass
+class ThreeDPointData:
+    x: int | float
+    y: int | float
+    z: int | float
+
+    @classmethod
+    def from_sequence(cls, sequence):
+        return cls(*sequence)
+    
+    @staticmethod
+    def show_intro_message(name: str):
+        print(f"Itsa me {name}")
+
+
+
 if __name__ == "__main__":
 
     p = ThreeDPoint(1,2,3)
@@ -39,4 +56,7 @@ if __name__ == "__main__":
 
     pd = ThreeDPoint.from_sequence((4,5,6))
     print(repr(pd))
+
+    dc_p = ThreeDPointData(1,2,3)
+    print(dc_p.show_intro_message('hello'))
 
