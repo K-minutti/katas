@@ -74,13 +74,52 @@ class GunArm(Arm):
         print(f"Bullet count {self.bullets}")
 
     
+# Dependency Injection
+class IndustrialRobot:
+    def __init__(self, body: Body, arm: Arm):
+        self.body = body
+        self.arm = arm
+
+    def rotate_body_left(self, degrees: int = 10):
+        self.body.rotate_left(degrees)
+
+    def rotate_body_right(self, degrees: int = 10):
+        self.body.rotate_right(degrees)
+    
+    def move_arm_up(self, distance: int = 10):
+        self.arm.move_up(distance)
+    
+    def move_arm_down(self, distance: int = 10):
+        self.arm.move_down(distance)
+
+    def weld(self):
+        self.arm.weld()
+
+    def shoot(self):
+        self.arm.shoot()
+
+    def get_ammo(self):
+        self.arm.show_ammo()
+
+    def change_arm(self, arm):
+        self.arm = arm
+
+
 
 if __name__ == "__main__":
     b = Bot()
     for _ in range(5):
         b.rotate_body_left(8)
+    b.move_arm_up(15)
+    b.weld()
     a = GunArm()
     b.change_arm(a)
     for _ in range(20):
         b.shoot()
+    b.weld()
     b.get_ammo()
+    print("--- DI - Robot ---")
+    robot = IndustrialRobot(Body(), Arm()) # Deps injection
+    robot.rotate_body_left()
+    robot.move_arm_up(14)
+    robot.weld()
